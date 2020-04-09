@@ -2,16 +2,16 @@
 # which is available at https://www.volatilityfoundation.org/license/vsl-v1.0
 #
 import logging
-from typing import List, Iterator, Any
+from typing import List
 
 import volatility
 from volatility.framework import exceptions, interfaces
-from volatility.framework import renderers, constants, contexts
+from volatility.framework import renderers, contexts
 from volatility.framework.automagic import mac
 from volatility.framework.configuration import requirements
 from volatility.framework.interfaces import plugins
-from volatility.framework.renderers import format_hints
 from volatility.framework.objects import utility
+from volatility.framework.renderers import format_hints
 from volatility.plugins.mac import lsmod
 
 vollog = logging.getLogger(__name__)
@@ -112,13 +112,14 @@ class Check_sysctl(plugins.PluginInterface):
                 break
 
     def _generator(self):
-        mac.MacUtilities.aslr_mask_symbol_table(self.context, self.config['darwin'], self.config['primary'])
+        masked_darwin_symbols = mac.MacUtilities.aslr_mask_symbol_table(self.context, self.config['darwin'],
+                                                                        self.config['primary'])
 
-        kernel = contexts.Module(self._context, self.config['darwin'], self.config['primary'], 0)
+        kernel = contexts.Module(self._context, masked_darwin_symbols, self.config['primary'], 0)
 
-        mods = lsmod.Lsmod.list_modules(self.context, self.config['primary'], self.config['darwin'])
+        mods = lsmod.Lsmod.list_modules(self.context, self.config['primary'], masked_darwin_symbols)
 
-        handlers = mac.MacUtilities.generate_kernel_handler_info(self.context, self.config['primary'], kernel, mods) 
+        handlers = mac.MacUtilities.generate_kernel_handler_info(self.context, self.config['primary'], kernel, mods)
 
         sysctl_list = kernel.object_from_symbol(symbol_name = "sysctl__children")
 
@@ -128,11 +129,12 @@ class Check_sysctl(plugins.PluginInterface):
             except exceptions.InvalidAddressException:
                 continue
 
-            module_name, symbol_name = mac.MacUtilities.lookup_module_address(self.context, handlers, check_addr) 
+            module_name, symbol_name = mac.MacUtilities.lookup_module_address(self.context, handlers, check_addr)
 
-            yield (0, (name, sysctl.oid_number, sysctl.get_perms(), format_hints.Hex(check_addr), val, module_name, symbol_name))
+            yield (0, (name, sysctl.oid_number, sysctl.get_perms(), format_hints.Hex(check_addr), val, module_name,
+                       symbol_name))
 
     def run(self):
-        return renderers.TreeGrid([("Name", str), ("Number", int), ("Perms", str), ("Handler Address", format_hints.Hex),
-                                   ("Value", str), ("Handler Module", str), ("Handler Symbol", str)],
-                                   self._generator()) 
+        return renderers.TreeGrid([("Name", str), ("Number", int), ("Perms", str),
+                                   ("Handler Address", format_hints.Hex), ("Value", str), ("Handler Module", str),
+                                   ("Handler Symbol", str)], self._generator())
