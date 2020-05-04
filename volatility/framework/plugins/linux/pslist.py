@@ -59,12 +59,12 @@ class PsList(interfaces.plugins.PluginInterface):
             yield (0, (pid, ppid, name))
 
     @classmethod
-    def list_tasks(cls,
-                   context: interfaces.context.ContextInterface,
-                   layer_name: str,
-                   vmlinux_symbols: str,
-                   filter_func: Callable[[int], bool] = lambda _: False
-                   ) -> Iterable[interfaces.objects.ObjectInterface]:
+    def list_tasks(
+            cls,
+            context: interfaces.context.ContextInterface,
+            layer_name: str,
+            vmlinux_symbols: str,
+            filter_func: Callable[[int], bool] = lambda _: False) -> Iterable[interfaces.objects.ObjectInterface]:
         """Lists all the tasks in the primary layer.
 
         Args:
@@ -75,9 +75,7 @@ class PsList(interfaces.plugins.PluginInterface):
         Yields:
             Process objects
         """
-        masked_vmlinux_symbols = linux.LinuxUtilities.aslr_mask_symbol_table(context, vmlinux_symbols, layer_name)
-
-        vmlinux = contexts.Module(context, masked_vmlinux_symbols, layer_name, 0)
+        vmlinux = contexts.Module(context, vmlinux_symbols, layer_name, 0)
 
         init_task = vmlinux.object_from_symbol(symbol_name = "init_task")
 
